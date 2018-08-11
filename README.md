@@ -10,7 +10,7 @@ VOICEROID2を外部から操作して喋ってもらいます。
 
 設定方法
 --------
-![configuraiton_image](https://raw.githubusercontent.com/kanosaki/Voiceroid2Proxy/imgs/configuration.png)
+![configuraiton_image](https://raw.githubusercontent.com/kanosaki/Voiceroid2Proxy/master/imgs/confiugration.png)
 
 LICENSE
 --------
