@@ -1,20 +1,15 @@
-﻿using Codeer.Friendly;
-using Codeer.Friendly.Windows;
+﻿using Codeer.Friendly.Windows;
 using Codeer.Friendly.Windows.Grasp;
 using Microsoft.Win32;
+using Nancy;
+using Nancy.Hosting.Self;
 using RM.Friendly.WPFStandardControls;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Runtime.Remoting;
-using System.Runtime.Remoting.Channels;
-using System.Runtime.Remoting.Channels.Ipc;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -71,42 +66,13 @@ namespace HideYukarisan
 
         static void serverStart()
         {
-            var lis = new TcpListener(IPAddress.Loopback, 4532);
-            lis.Start();
-            while (true)
+            var hostConfigs = new HostConfiguration()
             {
-                var client = lis.AcceptTcpClient();
-                Task.Run(() => handler(client));
-            }
+                UrlReservations = new UrlReservations() { CreateAutomatically = true }
+            };
+            var nh = new NancyHost(hostConfigs, new Uri("http://localhost:4532"));
+            nh.Start();
         }
-
-        static async void handler(TcpClient client)
-        {
-            using (var bw = new BinaryReader(client.GetStream()))
-            {
-                try
-                {
-                    var command = bw.ReadInt16();
-                    var speed = bw.ReadInt16();
-                    var tone = bw.ReadInt16();
-                    var volume = bw.ReadInt16();
-                    var voice = bw.ReadInt16();
-                    var encoding = bw.ReadByte();
-                    var msgLen = bw.ReadInt32();
-                    var messageBytes = bw.ReadBytes(msgLen);
-                    if (encoding != 0)
-                    {
-                        Console.WriteLine("Unsupproted encoding: " + encoding);
-                    }
-                    Engine().Play(Encoding.UTF8.GetString(messageBytes));
-                }
-                catch (EndOfStreamException eof)
-                {
-
-                }
-            }
-        }
-
     }
 
     class Voiceroid2 : IDisposable
@@ -239,16 +205,17 @@ namespace HideYukarisan
                     }
                 }
             }
-
             return p;
         }
 
         void closeVoiceroid2(Process proc)
         {
-            SetForegroundWindow(proc.Handle);
             proc.CloseMainWindow();
-            Thread.Sleep(1000);
-            SendKeys.Send("y");
+            Thread.Sleep(500);
+            if (!proc.HasExited)
+            {
+                proc.Kill();
+            }
         }
 
         public void Dispose()
@@ -260,7 +227,33 @@ namespace HideYukarisan
             }
         }
 
-        [DllImport ("User32.dll")]
+        [DllImport("User32.dll")]
         static extern int SetForegroundWindow(IntPtr point);
+    }
+
+    public class HelloModule : NancyModule
+    {
+        public HelloModule()
+        {
+            Get("/clear", p =>
+            {
+                Console.WriteLine("clear");
+                return "Hello";
+            });
+            Get("/skip", p =>
+            {
+                Console.WriteLine("skip");
+                return "Hello";
+            });
+            Get("/talk", p =>
+            {
+                dynamic txt = Request.Query.text;
+                if (!string.IsNullOrWhiteSpace(txt))
+                {
+                    Program.Engine().Play(txt);
+                }
+                return "ok";
+            });
+        }
     }
 }
